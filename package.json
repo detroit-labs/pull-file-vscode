@@ -2,7 +2,7 @@
     "name": "pull-file",
     "displayName": "Pull File",
     "description": "This extension is used to overwrite the content of the current file with the content of a selected file.",
-    "version": "1.0.2",
+    "version": "1.0.3",
     "publisher": "shawn-mallon",
     "author": "Shawn Mallon <shawn.mallon@detroitlabs.com>",
     "homepage": "https://github.com/Fieryava/pull-file",
