@@ -6,7 +6,7 @@
     "publisher": "shawn-mallon",
     "author": "Shawn Mallon <shawn.mallon@detroitlabs.com>",
     "homepage": "https://github.com/Fieryava/pull-file",
-    "license": "SEE LICENSE IN LICENSE.txt",
+    "license": "MIT",
     "bugs": {
         "url": "https://github.com/Fieryava/pull-file/issues"
     },
