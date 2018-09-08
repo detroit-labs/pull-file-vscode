@@ -1,4 +1,4 @@
-# pull-file README
+# pull-file
 
 Pull File is a VS Code extension that is used to overwrite the current file with a selected file.
 
