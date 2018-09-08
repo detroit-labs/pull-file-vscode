@@ -21,17 +21,3 @@ No settings are added by Pull File.
 ## Known Issues
 
 When selecting a file with a different extension than the current one, Pull File saves the selected file with the current file's extension.
-
-## Release Notes
-
-### 1.0.0
-
-Initial release of Pull File
-
-### 1.0.1
-
-Change Open File Dialog open label from Pull Content to Pull File.
-
-### 1.0.2
-
-Update package.json with homepage and keywords attributes

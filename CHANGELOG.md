@@ -1,7 +1,15 @@
 # Change Log
-All notable changes to the "file-content-puller" extension will be documented in this file.
-
-Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
 ## [Unreleased]
-- Initial release
+
+## [1.0.2]
+
+Update package.json with homepage and keywords attributes
+
+## [1.0.1]
+
+Change Open File Dialog open label from Pull Content to Pull File.
+
+## [1.0.0]
+
+Initial release of Pull File
