@@ -1,7 +1,8 @@
 'use strict';
-import { window, ExtensionContext, commands, TextDocument, TextEditor, OpenDialogOptions } from 'vscode';
+import { window, ExtensionContext, commands, TextDocument, TextEditor, OpenDialogOptions, QuickPickOptions } from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
+import { isString } from 'util';
 
 export function activate(context: ExtensionContext) {
     let disposable = commands.registerCommand('extension.pullFile', () => {
@@ -10,6 +11,13 @@ export function activate(context: ExtensionContext) {
         // Verify the active TextEditor is not undefined.
         if (isTextEditor(editor)) {
             let pullFile = new PullFile(editor);
+
+            pullFile.ShowQuickPick().then((selection: string | undefined) => {
+                if (isString(selection)) {
+                    pullFile.Pull();
+                }
+            });
+
             pullFile.Pull();
         }
     });
@@ -35,6 +43,22 @@ class PullFile {
     constructor(editor: TextEditor) {
         this._activeDocument = editor.document;
         this._extension = path.extname(this._activeDocument.fileName).replace('.', '');
+    }
+
+    /**
+     * Show a QuickPick with the files in the current directory.
+     * @returns The thenable of the show quick pick.
+     */
+    ShowQuickPick(): Thenable<string | undefined> {
+        // Get the files in the current directory.
+        let filesInCurrentDirectory: string[] = fs.readdirSync(this._activeDocument.fileName);
+        
+        const quickPickOptions: QuickPickOptions = {
+            canPickMany: false,
+            placeHolder: "Select a file to pull..."
+        };
+
+        return window.showQuickPick(filesInCurrentDirectory, quickPickOptions);
     }
 
     /**
