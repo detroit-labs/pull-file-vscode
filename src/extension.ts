@@ -39,7 +39,7 @@ class PullFile {
      */
     constructor(editor: vscode.TextEditor) {
         this._activeDocument = editor.document;
-        this._extension = path.extname(this._activeDocument.fileName).replace('.', '');
+        this._extension = path.extname(this._activeDocument.fileName);
         this._currentDirectory = path.dirname(this._activeDocument.fileName);
     }
 
@@ -118,7 +118,7 @@ class PullFile {
 
         // Remove the current file from the list.
         filesInCurrentDirectory.forEach((value) => {
-            if (value !== path.basename(this._activeDocument.fileName)) {
+            if (value !== path.basename(this._activeDocument.fileName) && path.extname(value) === this._extension) {
                 // Add the file to the array of files to show.
                 filesToShow[currentIndex] = value;
                 currentIndex++;
@@ -175,7 +175,7 @@ class PullFile {
         // Add a filter for the current file type if the extension can be found.
         if (this._extension !== "") {
             options.filters = {
-                "Current File Type": [this._extension],
+                "Current File Type": [this._extension.replace(".", "")],
                 "All Files": ["*"]
             };
         }
