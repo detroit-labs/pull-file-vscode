@@ -10,7 +10,8 @@ Add a setting to enable/disable the status bar button.
 ## [1.1.0]
 
 Added support for a quickpick with all the files in the current directory.
-Changed the file dialog to be an option on the newly added quickpick.
+Changed the open dialog to be an option on the newly added quickpick.
+The open dialog now defaults to the current directory.
 
 ## [1.0.2]
 
