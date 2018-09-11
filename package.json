@@ -41,6 +41,27 @@
                 "when": "editorFocus",
                 "command": "extension.pullFile"
             }]
+        },
+        "configuration": {
+            "type": "object",
+            "title": "Pull File Configuration",
+            "properties": {
+                "pullfile.useQuickPick": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Select files with a quickpick."
+                },
+                "pullfile.includeOpenDialogOptionInQuickPick": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Include an option to use the open dialog in the quickpick."
+                },
+                "pullfile.useStatusBarButton": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Initiate pull file with a button on the status bar."
+                }
+            }
         }
     },
     "scripts": {

@@ -4,20 +4,23 @@ import * as path from 'path';
 import * as fs from 'fs';
 
 export function activate(context: vscode.ExtensionContext) {
+    let settings = vscode.workspace.getConfiguration('pullfile');
+
     let disposable = vscode.commands.registerTextEditorCommand('extension.pullFile', (editor) => {
         // Pull content from a file into the active file.
-        let pullFile = new PullFile(editor);
+        let pullFile = new PullFile(editor, settings);
         pullFile.Pull();
     });
 
-    let pullFileStatusBarButton: vscode.StatusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left);
-    pullFileStatusBarButton.command = 'extension.pullFile';
-    pullFileStatusBarButton.text = "Pull File";
-    pullFileStatusBarButton.tooltip = "Overwrite the current file with a selected file.";
-    pullFileStatusBarButton.show();
+    if (settings.get("useStatusBarButton", true)) {
+        let pullFileStatusBarButton: vscode.StatusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left);
+        pullFileStatusBarButton.command = 'extension.pullFile';
+        pullFileStatusBarButton.text = "Pull File";
+        pullFileStatusBarButton.tooltip = "Overwrite the current file with a selected file.";
+        pullFileStatusBarButton.show();
+    }
 
     context.subscriptions.push(disposable);
-    context.subscriptions.push(pullFileStatusBarButton);
 }
 
 // this method is called when your extension is deactivated
@@ -32,15 +35,20 @@ class PullFile {
     private _extension: string;
     private _currentDirectory: string;
     private _useOpenDialogText: string = "Use Open Dialog...";
+    private _useQuickPick: boolean;
+    private _includeOpenDialogOptionInQuickPick: boolean;
 
     /**
      * Get the active TextDocument and its file extension from the active TextEditor.
      * @param editor The active TextEditor
      */
-    constructor(editor: vscode.TextEditor) {
+    constructor(editor: vscode.TextEditor, settings: vscode.WorkspaceConfiguration) {
         this._activeDocument = editor.document;
         this._extension = path.extname(this._activeDocument.fileName);
         this._currentDirectory = path.dirname(this._activeDocument.fileName);
+
+        this._useQuickPick = settings.get("useQuickPick", true);
+        this._includeOpenDialogOptionInQuickPick = settings.get("includeOpenDialogOptionInQuickPick", true);
     }
 
     /**
@@ -64,28 +72,43 @@ class PullFile {
         // Create a Promise to for the selected file.
         const promise: Promise<string | undefined> = new Promise((resolve) => {
             // Show a QuickPick for file selection first.
-            this.ShowQuickPick().then((selection) => {
-                // If there was a selection made then see if it was to use the open dialog.
-                if (selection) {
-                    // If a file was not selected in the QuickPick, show an OpenDialog for file selection.
-                    if (selection === this._useOpenDialogText) {
-                        this.ShowOpenDialog().then((fileUri) => {
-                            // If there is a selection, resolve the promise to it.
-                            if (fileUri && fileUri[0]) {
-                                resolve(fileUri[0].fsPath);
-                            }
-                        });
-                    }
-                    else {
-                        // If there is a file selection, append it to the current directory path then resolve the promise to it.
-                        let selectedFile: string = path.join(this._currentDirectory, selection);
-                        resolve(selectedFile);
-                    }
-                }
-            });
+            if (this._useQuickPick) {
+                this.SelectFileWithQuickPick(resolve);
+            }
+            else {
+                this.SelectFileWithOpenDialog(resolve);
+            }
+            
         });
         
         return promise;
+    }
+
+    private SelectFileWithQuickPick(resolve: Function): void {
+        // Create a Promise to for the selected file.
+        this.ShowQuickPick().then((selection) => {
+            // If there was a selection made then see if it was to use the open dialog.
+            if (selection) {
+                // If a file was not selected in the QuickPick, show an OpenDialog for file selection.
+                if (this._includeOpenDialogOptionInQuickPick && selection === this._useOpenDialogText) {
+                    this.SelectFileWithOpenDialog(resolve);
+                }
+                else {
+                    // If there is a file selection, append it to the current directory path then resolve the promise to it.
+                    let selectedFile: string = path.join(this._currentDirectory, selection);
+                    resolve(selectedFile);
+                }
+            }
+        });
+    }
+
+    private SelectFileWithOpenDialog(resolve: Function): void {
+        this.ShowOpenDialog().then((fileUri) => {
+            // If there is a selection, resolve the promise to it.
+            if (fileUri && fileUri[0]) {
+                resolve(fileUri[0].fsPath);
+            }
+        });
     }
 
     /**
@@ -112,9 +135,13 @@ class PullFile {
 
         // Create an array to hold the filtered items to show.
         let filesToShow: string[] = [];
-        let currentIndex = 1;
-        // Add an option to use the open dialog as the first option.
-        filesToShow[0] = this._useOpenDialogText;
+        let currentIndex = 0;
+
+        if (this._includeOpenDialogOptionInQuickPick) {
+            // Add an option to use the open dialog as the first option.
+            filesToShow[0] = this._useOpenDialogText;
+            currentIndex++;
+        }
 
         // Remove the current file from the list.
         filesInCurrentDirectory.forEach((value) => {
