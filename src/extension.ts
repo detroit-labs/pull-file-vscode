@@ -18,6 +18,8 @@ export function activate(context: vscode.ExtensionContext) {
         pullFileStatusBarButton.text = "Pull File";
         pullFileStatusBarButton.tooltip = "Overwrite the current file with a selected file.";
         pullFileStatusBarButton.show();
+        
+        context.subscriptions.push(pullFileStatusBarButton);
     }
 
     context.subscriptions.push(disposable);

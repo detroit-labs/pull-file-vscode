@@ -1,6 +1,12 @@
 # Change Log
 
 ## [Unreleased]
+
+## [1.2.1]
+Dispose status bar item using context subscriptions.
+Update changelog with missing release notes.
+
+## [1.2.0]
 Only show files of the same extension in the quickpick.
 Only show the Pull File command when an editor is open.
 Add settings to enable/disable the quickpick and open dialog.
