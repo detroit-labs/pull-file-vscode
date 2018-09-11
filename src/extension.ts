@@ -1,20 +1,23 @@
 'use strict';
-import { window, ExtensionContext, commands, TextDocument, TextEditor, OpenDialogOptions, QuickPickOptions, Uri } from 'vscode';
+import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
 
-export function activate(context: ExtensionContext) {
-    let disposable = commands.registerCommand('extension.pullFile', () => {
+export function activate(context: vscode.ExtensionContext) {
+    let disposable = vscode.commands.registerTextEditorCommand('extension.pullFile', (editor) => {
         // Pull content from a file into the active file.
-        let editor = window.activeTextEditor;
-        // Verify the active TextEditor is not undefined.
-        if (editor) {
-            let pullFile = new PullFile(editor);
-            pullFile.Pull();
-        }
+        let pullFile = new PullFile(editor);
+        pullFile.Pull();
     });
 
+    let pullFileStatusBarButton: vscode.StatusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left);
+    pullFileStatusBarButton.command = 'extension.pullFile';
+    pullFileStatusBarButton.text = "Pull File";
+    pullFileStatusBarButton.tooltip = "Overwrite the current file with a selected file.";
+    pullFileStatusBarButton.show();
+
     context.subscriptions.push(disposable);
+    context.subscriptions.push(pullFileStatusBarButton);
 }
 
 // this method is called when your extension is deactivated
@@ -25,7 +28,7 @@ export function deactivate() {
  * Pull the contents of a file into the active file.
  */
 class PullFile {
-    private _activeDocument: TextDocument;
+    private _activeDocument: vscode.TextDocument;
     private _extension: string;
     private _currentDirectory: string;
     private _useOpenDialogText: string = "Use Open Dialog...";
@@ -34,7 +37,7 @@ class PullFile {
      * Get the active TextDocument and its file extension from the active TextEditor.
      * @param editor The active TextEditor
      */
-    constructor(editor: TextEditor) {
+    constructor(editor: vscode.TextEditor) {
         this._activeDocument = editor.document;
         this._extension = path.extname(this._activeDocument.fileName).replace('.', '');
         this._currentDirectory = path.dirname(this._activeDocument.fileName);
@@ -92,12 +95,12 @@ class PullFile {
     private ShowQuickPick(): Thenable<string | undefined> {
         let filesToShow = this.GetFilesToShowInQuickPick();
         
-        const quickPickOptions: QuickPickOptions = {
+        const quickPickOptions: vscode.QuickPickOptions = {
             canPickMany: false,
             placeHolder: "Select a file to pull..."
         };
 
-        return window.showQuickPick(filesToShow, quickPickOptions);
+        return vscode.window.showQuickPick(filesToShow, quickPickOptions);
     }
 
     /**
@@ -129,11 +132,11 @@ class PullFile {
      * Show an OpenDialog with the options from GetOptions.
      * @returns The thenable of the show open dialog.
      */
-    private ShowOpenDialog(): Thenable<Uri[] | undefined> {
+    private ShowOpenDialog(): Thenable<vscode.Uri[] | undefined> {
         const options = this.GetOptions();
     
         // Let the user pick a file with the OS file open dialog.
-        return window.showOpenDialog(options);
+        return vscode.window.showOpenDialog(options);
     }
 
     /**
@@ -158,12 +161,12 @@ class PullFile {
     /**
      * Get the OpenDialogOptions for the OpenDialog.
      */
-    private GetOptions(): OpenDialogOptions {
+    private GetOptions(): vscode.OpenDialogOptions {
         // Set the options for the OpenDialog.
-        const options: OpenDialogOptions = {
+        const options: vscode.OpenDialogOptions = {
             canSelectMany: false,
             openLabel: "Pull File",
-            defaultUri: Uri.file(this._currentDirectory),
+            defaultUri: vscode.Uri.file(this._currentDirectory),
             filters: {
                 "All Files": ["*"]
             }
