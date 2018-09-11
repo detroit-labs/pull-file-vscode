@@ -25,10 +25,10 @@ export function deactivate() {
  * Pull the contents of a file into the active file.
  */
 class PullFile {
-    _activeDocument: TextDocument;
-    _extension: string;
-    _currentDirectory: string;
-    _useOpenDialogText: string = "Use Open Dialog...";
+    private _activeDocument: TextDocument;
+    private _extension: string;
+    private _currentDirectory: string;
+    private _useOpenDialogText: string = "Use Open Dialog...";
 
     /**
      * Get the active TextDocument and its file extension from the active TextEditor.
@@ -43,7 +43,7 @@ class PullFile {
     /**
      * Pull the contents of a file into the active file.
      */
-    public Pull() {
+    public Pull(): void {
         // Select a file.
         this.SelectFile().then((fileToPull) => {
             // If a file was selected, copy that file to the current file.
@@ -59,7 +59,7 @@ class PullFile {
      */
     private SelectFile(): Thenable<string | undefined> {
         // Create a Promise to for the selected file.
-        const promise: Promise<string | undefined> = new Promise((resolve, reject) => {
+        const promise: Promise<string | undefined> = new Promise((resolve) => {
             // Show a QuickPick for file selection first.
             this.ShowQuickPick().then((selection) => {
                 // If there was a selection made then see if it was to use the open dialog.
@@ -90,6 +90,20 @@ class PullFile {
      * @returns The thenable of the show quick pick.
      */
     private ShowQuickPick(): Thenable<string | undefined> {
+        let filesToShow = this.GetFilesToShowInQuickPick();
+        
+        const quickPickOptions: QuickPickOptions = {
+            canPickMany: false,
+            placeHolder: "Select a file to pull..."
+        };
+
+        return window.showQuickPick(filesToShow, quickPickOptions);
+    }
+
+    /**
+     * Get an array of the files to show in the quickpick.
+     */
+    private GetFilesToShowInQuickPick(): string[] {
         // Get the files in the current directory.
         let filesInCurrentDirectory: string[] = fs.readdirSync(this._currentDirectory);
 
@@ -102,17 +116,13 @@ class PullFile {
         // Remove the current file from the list.
         filesInCurrentDirectory.forEach((value) => {
             if (value !== path.basename(this._activeDocument.fileName)) {
+                // Add the file to the array of files to show.
                 filesToShow[currentIndex] = value;
                 currentIndex++;
             }
         });
-        
-        const quickPickOptions: QuickPickOptions = {
-            canPickMany: false,
-            placeHolder: "Select a file to pull..."
-        };
 
-        return window.showQuickPick(filesToShow, quickPickOptions);
+        return filesToShow;
     }
 
     /**
@@ -130,7 +140,7 @@ class PullFile {
      * Copy the file represented by fileToPull to the current file.
      * @param fileToPull The filepath of the file to pull.
      */
-    private CopyFile(fileToPull: string) {
+    private CopyFile(fileToPull: string): void {
         // If the file has changes then save them first so the editor shows the external changes.
         if (this._activeDocument.isDirty) {
             this._activeDocument.save().then(() => {
