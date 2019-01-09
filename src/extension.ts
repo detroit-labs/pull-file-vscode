@@ -4,16 +4,18 @@ import * as path from 'path';
 import * as fs from 'fs';
 
 export function activate(context: vscode.ExtensionContext) {
-    let settings = vscode.workspace.getConfiguration('pullfile');
+    const settings = vscode.workspace.getConfiguration('pullfile');
 
-    let disposable = vscode.commands.registerTextEditorCommand('extension.pullFile', (editor) => {
+    const disposable = vscode.commands.registerTextEditorCommand('extension.pullFile', (editor) => {
         // Pull content from a file into the active file.
-        let pullFile = new PullFile(editor, settings);
+        const pullFile = new PullFile(editor, settings);
         pullFile.Pull();
     });
 
+    context.subscriptions.push(disposable);
+
     if (settings.get("useStatusBarButton", true)) {
-        let pullFileStatusBarButton: vscode.StatusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left);
+        const pullFileStatusBarButton: vscode.StatusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left);
         pullFileStatusBarButton.command = 'extension.pullFile';
         pullFileStatusBarButton.text = "Pull File";
         pullFileStatusBarButton.tooltip = "Overwrite the current file with a selected file.";
@@ -21,8 +23,6 @@ export function activate(context: vscode.ExtensionContext) {
         
         context.subscriptions.push(pullFileStatusBarButton);
     }
-
-    context.subscriptions.push(disposable);
 }
 
 // this method is called when your extension is deactivated
@@ -97,7 +97,7 @@ class PullFile {
                 }
                 else {
                     // If there is a file selection, append it to the current directory path then resolve the promise to it.
-                    let selectedFile: string = path.join(this._currentDirectory, selection);
+                    const selectedFile: string = path.join(this._currentDirectory, selection);
                     resolve(selectedFile);
                 }
             }
@@ -118,7 +118,7 @@ class PullFile {
      * @returns The thenable of the show quick pick.
      */
     private ShowQuickPick(): Thenable<string | undefined> {
-        let filesToShow = this.GetFilesToShowInQuickPick();
+        const filesToShow = this.GetFilesToShowInQuickPick();
         
         const quickPickOptions: vscode.QuickPickOptions = {
             canPickMany: false,
@@ -133,10 +133,10 @@ class PullFile {
      */
     private GetFilesToShowInQuickPick(): string[] {
         // Get the files in the current directory.
-        let filesInCurrentDirectory: string[] = fs.readdirSync(this._currentDirectory);
+        const filesInCurrentDirectory: string[] = fs.readdirSync(this._currentDirectory);
 
         // Create an array to hold the filtered items to show.
-        let filesToShow: string[] = [];
+        const filesToShow: string[] = [];
         let currentIndex = 0;
 
         if (this._includeOpenDialogOptionInQuickPick) {

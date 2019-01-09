@@ -37,10 +37,12 @@
             }
         ],
         "menus": {
-            "commandPalette": [{
-                "when": "editorFocus",
-                "command": "extension.pullFile"
-            }]
+            "commandPalette": [
+                {
+                    "when": "editorFocus",
+                    "command": "extension.pullFile"
+                }
+            ]
         },
         "configuration": {
             "type": "object",
