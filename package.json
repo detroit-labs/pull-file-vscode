@@ -39,7 +39,7 @@
         "menus": {
             "commandPalette": [
                 {
-                    "when": "editorFocus",
+                    "when": "editorLangId == json",
                     "command": "extension.pullFile"
                 }
             ]
