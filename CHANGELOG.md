@@ -5,6 +5,7 @@
 ## [1.2.2]
 Change lets to consts where proper.
 Update command to appear in command palette when the editor is json.
+Downgrade event-stream to version 3.3.4 due to a security vulnerability.
 
 ## [1.2.1]
 Dispose status bar item using context subscriptions.
