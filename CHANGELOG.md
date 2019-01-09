@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+## [1.2.2]
+Change lets to consts where proper.
+Update command to appear in command palette when the editor is json.
+
 ## [1.2.1]
 Dispose status bar item using context subscriptions.
 Update changelog with missing release notes.
