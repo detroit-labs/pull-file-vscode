@@ -1,6 +1,14 @@
 # Change Log
 
 ## [Unreleased]
+Pull files from subdirectories.
+
+## [1.3.0]
+Remove all fs code for reading and copying files in favor of the vscode api.
+Clean up async code for readability.
+Update repo link to new github repo.
+Update major versions of dev dependencies.
+Update tslint rules to extend the recommended rules.
 
 ## [1.2.2]
 Change lets to consts where proper.
