@@ -1,206 +1,195 @@
 "use strict";
-import { copyFileSync, readdirSync } from "fs";
-import { basename, dirname, extname, join } from "path";
+import * as path from "path";
 import * as vscode from "vscode";
 
-export function activate(context: vscode.ExtensionContext) {
-    const settings = vscode.workspace.getConfiguration("pullfile");
+interface IConfig {
+    useQuickPick: boolean;
+    showOpenDialogOption: boolean;
+    useStatusBarButton: boolean;
+}
 
-    const disposable = vscode.commands.registerTextEditorCommand("extension.pullFile", (editor) => {
+const commandId = "extension.pullFile";
+const commandDisplayText = "Pull File";
+const statusBarButtonTooltip = "Overwrite the current file with a selected file.";
+const useOpenDialogText = "Use Open Dialog...";
+const quickPickPlaceholder = "Select a file to pull...";
+
+export function activate(context: vscode.ExtensionContext) {
+    const config = getConfigSettings();
+
+    const command = vscode.commands.registerTextEditorCommand(commandId, (editor) => {
         // Pull content from a file into the active file.
-        const pullFile = new PullFile(editor, settings);
-        pullFile.Pull();
+        new PullFile(editor, config.useQuickPick, config.showOpenDialogOption).pull();
     });
 
-    context.subscriptions.push(disposable);
+    context.subscriptions.push(command);
 
-    if (settings.get("useStatusBarButton", true)) {
-        const pullFileStatusBarButton: vscode.StatusBarItem =
-            vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left);
-        pullFileStatusBarButton.command = "extension.pullFile";
-        pullFileStatusBarButton.text = "Pull File";
-        pullFileStatusBarButton.tooltip = "Overwrite the current file with a selected file.";
-        pullFileStatusBarButton.show();
-
-        context.subscriptions.push(pullFileStatusBarButton);
+    if (config.useStatusBarButton) {
+        const statusBarButton = createStatusBarButton();
+        statusBarButton.show();
+        context.subscriptions.push(statusBarButton);
     }
 }
 
-/**
- * Pull the contents of a file into the active file.
- */
+function getConfigSettings(): IConfig {
+    const config = vscode.workspace.getConfiguration("pullfile");
+    const useQuickPick = config.get<boolean>("useQuickPick", true);
+    const showOpenDialogOption = config.get<boolean>("includeOpenDialogOptionInQuickPick", true);
+    const useStatusBarButton = config.get<boolean>("useStatusBarButton", true);
+    return { useQuickPick, showOpenDialogOption, useStatusBarButton };
+}
+
+function createStatusBarButton(): vscode.StatusBarItem {
+    const statusBarButton: vscode.StatusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left);
+    statusBarButton.command = commandId;
+    statusBarButton.text = commandDisplayText;
+    statusBarButton.tooltip = statusBarButtonTooltip;
+    return statusBarButton;
+}
+
 class PullFile {
     private activeDocument: vscode.TextDocument;
+    private activeFileUri: vscode.Uri;
     private extension: string;
-    private currentDirectory: string;
-    private useOpenDialogText: string = "Use Open Dialog...";
+    private activeFolder!: vscode.WorkspaceFolder;
     private useQuickPick: boolean;
-    private includeOpenDialogOptionInQuickPick: boolean;
+    private showOpenDialogOption: boolean;
+    private openDialogOptions: vscode.OpenDialogOptions = {
+        canSelectMany: false,
+        filters: {
+            "All Files": ["*"],
+        },
+        openLabel: commandDisplayText,
+    };
 
-    /**
-     * Get the active TextDocument and its file extension from the active TextEditor.
-     * @param editor The active TextEditor
-     */
-    constructor(editor: vscode.TextEditor, settings: vscode.WorkspaceConfiguration) {
+    constructor(editor: vscode.TextEditor, useQuickPick: boolean, showOpenDialogOption: boolean) {
         this.activeDocument = editor.document;
-        this.extension = extname(this.activeDocument.fileName);
-        this.currentDirectory = dirname(this.activeDocument.fileName);
-
-        this.useQuickPick = settings.get("useQuickPick", true);
-        this.includeOpenDialogOptionInQuickPick = settings.get("includeOpenDialogOptionInQuickPick", true);
+        this.activeFileUri = this.activeDocument.uri;
+        this.extension = path.extname(this.activeDocument.fileName);
+        const activeFolder = vscode.workspace.getWorkspaceFolder(this.activeFileUri);
+        if (activeFolder) {
+            this.activeFolder = activeFolder;
+        }
+        this.useQuickPick = useQuickPick;
+        this.showOpenDialogOption = showOpenDialogOption;
     }
-
     /**
      * Pull the contents of a file into the active file.
      */
-    public Pull(): void {
-        // Select a file.
-        this.SelectFile().then((fileToPull) => {
-            // If a file was selected, copy that file to the current file.
-            if (fileToPull) {
-                this.CopyFile(fileToPull);
-            }
-        });
+    public pull(): void {
+        if (!this.activeFolder) {
+            return;
+        }
+
+        this.getFilesInFolder()
+            .then((files) => {
+                // Show a QuickPick for file selection first.
+                if (this.useQuickPick) {
+                    return this.selectFileWithQuickPick(files);
+                } else {
+                    return this.selectFileWithOpenDialog();
+                }
+            })
+            .then((filePathToPull) => {
+                // If a file was selected, copy that file to the current file.
+                if (filePathToPull) {
+                    const file = vscode.Uri.file(filePathToPull);
+                    this.copyFile(file);
+                }
+            });
     }
 
     /**
-     * Select the file to pull using a quickpick or the open dialog.
-     * @returns A promise that resolves to the selected file or undefined.
+     * Get an array of the files with the extension in the folder.
      */
-    private SelectFile(): Thenable<string | undefined> {
-        // Create a Promise to for the selected file.
-        const promise: Promise<string | undefined> = new Promise((resolve) => {
-            // Show a QuickPick for file selection first.
-            if (this.useQuickPick) {
-                resolve(this.SelectFileWithQuickPick());
+    private async getFilesInFolder(): Promise<vscode.Uri[]> {
+        // Get the files in the folder.
+        const searchPattern = new vscode.RelativePattern(this.activeFolder, "*" + this.extension);
+        const excludePattern = new vscode.RelativePattern(this.activeFolder, path.basename(this.activeFileUri.fsPath));
+        return vscode.workspace.findFiles(searchPattern, excludePattern);
+    }
+
+    private async selectFileWithQuickPick(files: vscode.Uri[]): Promise<string | undefined> {
+        const items: string[] = [];
+
+        if (this.showOpenDialogOption) {
+            items.push(useOpenDialogText);
+        }
+
+        items.push(...files.map((file) => path.basename(file.fsPath)));
+        const selection = await this.showQuickPick(items);
+
+        // If there was a selection made then see if it was to use the open dialog.
+        if (selection) {
+            // If a file was not selected in the QuickPick, show an OpenDialog for file selection.
+            if (this.showOpenDialogOption && selection === useOpenDialogText) {
+                return this.selectFileWithOpenDialog();
             } else {
-                resolve(this.SelectFileWithOpenDialog());
+                // If there is a file selection, resolve the promise to it.
+                return path.join(this.activeFolder.uri.fsPath, selection);
             }
-
-        });
-
-        return promise;
+        } else {
+            return undefined;
+        }
     }
 
-    private SelectFileWithQuickPick(): string {
-        // Create a Promise to for the selected file.
-        this.ShowQuickPick().then((selection) => {
-            // If there was a selection made then see if it was to use the open dialog.
-            if (selection) {
-                // If a file was not selected in the QuickPick, show an OpenDialog for file selection.
-                if (this.includeOpenDialogOptionInQuickPick && selection === this.useOpenDialogText) {
-                    return this.SelectFileWithOpenDialog();
-                } else {
-                    // If there is a file selection, append it to the current directory path then return it.
-                    return join(this.currentDirectory, selection);
-                }
-            }
-        });
-    }
+    private async selectFileWithOpenDialog(): Promise<string | undefined> {
+        const fileUri = await this.showOpenDialog();
 
-    private SelectFileWithOpenDialog(): string {
-        this.ShowOpenDialog().then((fileUri) => {
-            // If there is a selection, resolve the promise to it.
-            if (fileUri && fileUri[0]) {
-                return fileUri[0].fsPath;
-            }
-        });
+        // If there is a selection, resolve the promise to it.
+        if (fileUri && fileUri[0]) {
+            return fileUri[0].fsPath;
+        } else {
+            return undefined;
+        }
     }
 
     /**
      * Show a QuickPick with the files in the current directory.
      * @returns The thenable of the show quick pick.
      */
-    private ShowQuickPick(): Thenable<string | undefined> {
-        const filesToShow = this.GetFilesToShowInQuickPick();
-
+    private showQuickPick(items: string[]): Thenable<string | undefined> {
         const quickPickOptions: vscode.QuickPickOptions = {
             canPickMany: false,
-            placeHolder: "Select a file to pull...",
+            placeHolder: quickPickPlaceholder,
         };
 
-        return vscode.window.showQuickPick(filesToShow, quickPickOptions);
-    }
-
-    /**
-     * Get an array of the files to show in the quickpick.
-     */
-    private GetFilesToShowInQuickPick(): string[] {
-        // Get the files in the current directory.
-        const filesInCurrentDirectory: string[] = readdirSync(this.currentDirectory);
-
-        // Create an array to hold the filtered items to show.
-        const filesToShow: string[] = [];
-        let currentIndex = 0;
-
-        if (this.includeOpenDialogOptionInQuickPick) {
-            // Add an option to use the open dialog as the first option.
-            filesToShow[0] = this.useOpenDialogText;
-            currentIndex++;
-        }
-
-        // Remove the current file from the list.
-        filesInCurrentDirectory.forEach((value) => {
-            if (value !== basename(this.activeDocument.fileName) && extname(value) === this.extension) {
-                // Add the file to the array of files to show.
-                filesToShow[currentIndex] = value;
-                currentIndex++;
-            }
-        });
-
-        return filesToShow;
+        return vscode.window.showQuickPick(items, quickPickOptions);
     }
 
     /**
      * Show an OpenDialog with the options from GetOptions.
      * @returns The thenable of the show open dialog.
      */
-    private ShowOpenDialog(): Thenable<vscode.Uri[] | undefined> {
-        const options = this.GetOptions();
+    private showOpenDialog(): Thenable<vscode.Uri[] | undefined> {
+        // Add a filter for the current file type.
+        if (this.extension !== "" && this.openDialogOptions.filters) {
+            this.openDialogOptions.filters["Current File Type"] = [this.extension.replace(".", "")];
+        }
 
         // Let the user pick a file with the OS file open dialog.
-        return vscode.window.showOpenDialog(options);
+        return vscode.window.showOpenDialog(this.openDialogOptions);
     }
 
     /**
      * Copy the file represented by fileToPull to the current file.
      * @param fileToPull The filepath of the file to pull.
      */
-    private CopyFile(fileToPull: string): void {
-        // If the file has changes then save them first so the editor shows the external changes.
-        if (this.activeDocument.isDirty) {
-            this.activeDocument.save().then(() => {
-                // Copy the selected file to the currently opened file and overwrite it.
-                copyFileSync(fileToPull, this.activeDocument.fileName);
-            });
-        } else {
-            // Copy the selected file to the currently opened file and overwrite it.
-            copyFileSync(fileToPull, this.activeDocument.fileName);
-        }
+    private async copyFile(fileToPull: vscode.Uri): Promise<void> {
+        // TODO: replace text in file using vscode replace instead of fs.
+        const text = (await vscode.workspace.openTextDocument(fileToPull)).getText();
+
+        // Copy the selected file to the currently opened file and overwrite it.
+        const range = this.getWholeFileRange(this.activeDocument);
+        const edit = new vscode.WorkspaceEdit();
+        edit.replace(this.activeFileUri, range, text);
+        await vscode.workspace.applyEdit(edit);
+        this.activeDocument.save();
     }
 
-    /**
-     * Get the OpenDialogOptions for the OpenDialog.
-     */
-    private GetOptions(): vscode.OpenDialogOptions {
-        // Set the options for the OpenDialog.
-        const options: vscode.OpenDialogOptions = {
-            canSelectMany: false,
-            openLabel: "Pull File",
-            defaultUri: vscode.Uri.file(this.currentDirectory),
-            filters: {
-                "All Files": ["*"],
-            },
-        };
-
-        // Add a filter for the current file type if the extension can be found.
-        if (this.extension !== "") {
-            options.filters = {
-                "Current File Type": [this.extension.replace(".", "")],
-                "All Files": ["*"],
-            };
-        }
-
-        return options;
+    private getWholeFileRange(document: vscode.TextDocument): vscode.Range {
+        const firstLine = document.lineAt(0);
+        const lastLine = document.lineAt(document.lineCount - 1);
+        return new vscode.Range(firstLine.range.start, lastLine.range.end);
     }
 }
