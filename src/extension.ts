@@ -51,7 +51,7 @@ class PullFile {
     private activeDocument: vscode.TextDocument;
     private activeFileUri: vscode.Uri;
     private extension: string;
-    private activeFolder!: vscode.WorkspaceFolder;
+    private activeFolder: string;
     private useQuickPick: boolean;
     private showOpenDialogOption: boolean;
     private openDialogOptions: vscode.OpenDialogOptions = {
@@ -66,10 +66,7 @@ class PullFile {
         this.activeDocument = editor.document;
         this.activeFileUri = this.activeDocument.uri;
         this.extension = path.extname(this.activeDocument.fileName);
-        const activeFolder = vscode.workspace.getWorkspaceFolder(this.activeFileUri);
-        if (activeFolder) {
-            this.activeFolder = activeFolder;
-        }
+        this.activeFolder = path.dirname(this.activeFileUri.fsPath);
         this.useQuickPick = useQuickPick;
         this.showOpenDialogOption = showOpenDialogOption;
     }
@@ -77,10 +74,6 @@ class PullFile {
      * Pull the contents of a file into the active file.
      */
     public pull(): void {
-        if (!this.activeFolder) {
-            return;
-        }
-
         this.getFilesInFolder()
             .then((files) => {
                 // Show a QuickPick for file selection first.
@@ -105,7 +98,8 @@ class PullFile {
     private async getFilesInFolder(): Promise<vscode.Uri[]> {
         // Get the files in the folder.
         const searchPattern = new vscode.RelativePattern(this.activeFolder, "*" + this.extension);
-        const excludePattern = new vscode.RelativePattern(this.activeFolder, path.basename(this.activeFileUri.fsPath));
+        const excludePattern =
+            new vscode.RelativePattern(this.activeFolder, path.basename(this.activeFileUri.fsPath));
         return vscode.workspace.findFiles(searchPattern, excludePattern);
     }
 
@@ -126,7 +120,7 @@ class PullFile {
                 return this.selectFileWithOpenDialog();
             } else {
                 // If there is a file selection, resolve the promise to it.
-                return path.join(this.activeFolder.uri.fsPath, selection);
+                return path.join(this.activeFolder, selection);
             }
         } else {
             return undefined;
