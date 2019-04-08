@@ -3,6 +3,9 @@
 ## [Unreleased]
 Pull files from subdirectories.
 
+## [1.3.2]
+Sort files in folder alphanumerically.
+
 ## [1.3.1]
 Fix issue with only searching root workspace folders for files to pull.
 
