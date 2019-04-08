@@ -104,13 +104,16 @@ class PullFile {
     }
 
     private async selectFileWithQuickPick(files: vscode.Uri[]): Promise<string | undefined> {
-        const items: string[] = [];
+        let items: string[] = [];
 
         if (this.showOpenDialogOption) {
             items.push(useOpenDialogText);
         }
 
         items.push(...files.map((file) => path.basename(file.fsPath)));
+        items = items.sort((a, b) => {
+            return a.toLocaleLowerCase().localeCompare(b.toLocaleLowerCase(), undefined, { numeric: true });
+        });
         const selection = await this.showQuickPick(items);
 
         // If there was a selection made then see if it was to use the open dialog.
