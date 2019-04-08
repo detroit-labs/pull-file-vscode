@@ -3,6 +3,9 @@
 ## [Unreleased]
 Pull files from subdirectories.
 
+## [1.3.1]
+Fix issue with only searching root workspace folders for files to pull.
+
 ## [1.3.0]
 Remove all fs code for reading and copying files in favor of the vscode api.
 Clean up async code for readability.
